@@ -120,13 +120,12 @@ train, test, validation = loading_json()
 train.index
 train.columns
 df = shrink_df(train, 8000)
-df.imageId
+
 
 #run shrink_df a few times to get the dataframe we want
-df2 = shrink_df(df, 5000)
-
 df2 = shrink_df(df2, 1000)
 
+final_df = shrink_df(df2, 500)
 
 
 def download(data_type, data):
@@ -136,7 +135,7 @@ def download(data_type, data):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    for i in range(len( data)):
+    for i in range(20068, len(data)):
         #response = requests.get(data.loc[i]['url'], timeout = 5, stream = True)
 
         try:
@@ -150,6 +149,9 @@ def download(data_type, data):
     return 1
 
 download('training', df2)
+download('validation', validation)
+
+download('testing', test)
 
 def convertToParallelSolution (ind, data_type, data, numOfProcesses):
     totalnumberOfSamples = len( data )
@@ -182,9 +184,76 @@ def parallel_solution (data_type, data, numOfProcesses=20 ):
     multiple_results = [pool.apply_async(convertToParallelSolution, args=(ind, data_type, data, numOfProcesses, ))for ind in range(numOfProcesses)]
 
     resultContainer =  [res.get() for res in multiple_results]
+    
+    
+
+# *********************************************************************
+from sklearn.datasets import load_files
+from keras.utils import np_utils
+import numpy as np
+from glob import glob
+from keras.preprocessing import image
+import keras
 
 
-download()
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+
+
+from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D
+from keras.models import Sequential, load_model, Model
+from keras.layers import Input, BatchNormalization
+from keras.layers import Dense, LSTM, GlobalAveragePooling1D, GlobalAveragePooling2D
+from keras.layers import Activation, Flatten, Dropout, BatchNormalization
+from keras.layers import Conv2D, MaxPooling2D, GlobalMaxPooling2D
+
+from PIL import ImageFile                            
+ImageFile.LOAD_TRUNCATED_IMAGES = True            
+
+     
+train_path = 'data/training_images/'
+train_batch = os.listdir(train_path)
+
+x_train = []    
+
+for sample in final_df['imageId']:
+    img_path = train_path + str(sample) +'.jpeg'
+    img = image.load_img(img_path, target_size= (331, 331))
+    x = image.img_to_array(img)
+    x = x.astype('float32')/255
+    x_train.append(x)
+
+
+
+def multi_model():    
+    model_input = Input(shape=(331, 331, 3))
+    x = BatchNormalization()(model_input)
+    
+    # Define a model architecture
+    x = Conv2D(32, (5, 5), activation='relu', padding='same')(model_input)
+    x = MaxPooling2D(pool_size=(2, 2))(x)    
+    x = Dropout(0.25)(x)
+    
+    x = Conv2D(128, (5, 5), activation='relu', padding='same')(x)       
+    x = MaxPooling2D(pool_size=(2, 2))(x)    
+    x = Dropout(0.25)(x)
+              
+    x = GlobalMaxPooling2D()(x)
+    
+    x = Dense(512, activation='relu')(x)    
+    x = Dropout(0.25)(x)
+    
+    y = Dense(228, activation='softmax')(x)
+   
+    
+    model = keras.applications.nasnet.NASNetLarge(input_shape=(331,331,3), include_top=True, weights='imagenet', 
+                                              input_tensor=None, pooling=None)
+    Model(inputs=model_input, outputs=y)
+    
+    # Compile the model
+    model.compile(loss='categorical_crossentropy', optimizer='nadam', metrics=['accuracy'])
+    return model
+
 
 if __name__ == "__main__":
 
