@@ -123,6 +123,7 @@ df = shrink_df(train, 8000)
 
 
 #run shrink_df a few times to get the dataframe we want
+df2 = shrink_df(df, 5000)
 df2 = shrink_df(df2, 1000)
 
 final_df = shrink_df(df2, 500)
@@ -214,16 +215,28 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 train_path = 'data/training_images/'
 train_batch = os.listdir(train_path)
 
-x_train = []    
+final_df.index
+final_df['imageId'][1]
 
-for sample in final_df['imageId']:
-    img_path = train_path + str(sample) +'.jpeg'
-    img = image.load_img(img_path, target_size= (331, 331))
-    x = image.img_to_array(img)
-    x = x.astype('float32')/255
-    x_train.append(x)
+train_data = []
 
+from tqdm import tqdm
 
+for i in tqdm(range(len(final_df))):
+    try:
+        img_path = train_path + str(final_df['imageId'][i]) +'.jpeg'
+        img = image.load_img(img_path, target_size= (331, 331))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        train_data.append(x)
+    except:
+        train_data.append('Missing_File')
+        print('no file', final_df['imageId'][i])
+        
+final_df['img_processed'] = train_data
+
+processed_df = final_df[final_df['img_processed'] != 'Missing_File']
+train_data = processed_df['img_processed'].tolist()
 
 def multi_model():    
     model_input = Input(shape=(331, 331, 3))
@@ -231,7 +244,7 @@ def multi_model():
     
     # Define a model architecture
     x = Conv2D(32, (5, 5), activation='relu', padding='same')(model_input)
-    x = MaxPooling2D(pool_size=(2, 2))(x)    
+    x = MaxPooling2D(pool_size=(2, 2))(x)
     x = Dropout(0.25)(x)
     
     x = Conv2D(128, (5, 5), activation='relu', padding='same')(x)       
@@ -254,6 +267,12 @@ def multi_model():
     model.compile(loss='categorical_crossentropy', optimizer='nadam', metrics=['accuracy'])
     return model
 
+train_input = np.vstack(train_data)
+
+
+processed_df['imageId']
+
+multi_model().fit(x=np.expand_dims(processed_df['img_processed'].as_matrix()), y=processed_df['labelId'].as_matrix())
 
 if __name__ == "__main__":
 
