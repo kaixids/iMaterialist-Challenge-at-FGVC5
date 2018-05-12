@@ -128,6 +128,7 @@ df2 = shrink_df(df2, 1000)
 
 final_df = shrink_df(df2, 500)
 
+del train, df, df2
 
 def download(data_type, data):
 
@@ -223,15 +224,23 @@ train_data = []
 from tqdm import tqdm
 
 for i in tqdm(range(len(final_df))):
-    try:
+    
+    #try:
         img_path = train_path + str(final_df['imageId'][i]) +'.jpeg'
         img = image.load_img(img_path, target_size= (331, 331))
         x = image.img_to_array(img)
         x = np.expand_dims(x, axis=0)
-        train_data.append(x)
-    except:
-        train_data.append('Missing_File')
-        print('no file', final_df['imageId'][i])
+        np.save(os.path.join('processed_training_data', str(final_df['imageId'][i])), x)
+        #train_data.append(x)
+        
+    #except:
+        #print('no file', final_df['imageId'][i])
+
+del train, df, df2
+
+train_input = np.vstack(train_data)
+
+np.save(img_array, train_input)
         
 final_df['img_processed'] = train_data
 
