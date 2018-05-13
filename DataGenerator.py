@@ -1,9 +1,13 @@
 
+#gather list of IDs
+import keras
+import numpy as np
+
+
+
 class DataGenerator():
 
-    import keras
-    from keras.preprossessing.image import ImageDataGenerator 
-    import numpy as np
+    
 
     def __init__(self, list_IDs, labels, batch_size=32, dim=(331,331), n_channels=3, 
         n_classes=228, shuffle=True):
@@ -14,6 +18,10 @@ class DataGenerator():
         self.n_classes = n_classes
         self.shuffle = shuffle
         self.on_epoch_end()
+    
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.list_IDs) / self.batch_size))
 
 
     def on_epoch_end(self):
@@ -49,15 +57,4 @@ class DataGenerator():
             y[i] = self.labels[ID]
 
 
-    def apply_labels(self):
-        # Code to apply labels to each sample based on self.X and self.Y
 
-    def get_next_batch(self):
-        """Get the next training batch"""
-        self.img_data_gen.flow(self.X, self.Y, self.batch_size)
-
-
-img_gen = ImageDataGenerator(...)
-gen = Generator(X, Y, img_gen, 128)
-
-model.fit_generator(gen.get_next_batch(), ...)
