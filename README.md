@@ -8,7 +8,7 @@ Progress so far:
 
 Currenty working on:
 May 10
-- ~~build multi-label generator to work with the large dataset    ~~  
+- ~~build multi-label generator to work with the large dataset~~  
   https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly.html    
   http://www.kubacieslik.com/extending-keras-imagedatagenerator-handle-multilable-classification-tasks/    
 May 13
