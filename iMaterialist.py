@@ -20,6 +20,7 @@ import shutil
 from pandas.io.json import json_normalize
 import urllib3
 import collections
+from tqdm import tqdm
 
 
 
@@ -137,7 +138,7 @@ def download(data_type, data):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    for i in range(20068, len(data)):
+    for i in range(7875,len(data)):
         #response = requests.get(data.loc[i]['url'], timeout = 5, stream = True)
 
         try:
@@ -154,40 +155,7 @@ download('training', df2)
 download('validation', validation)
 
 download('testing', test)
-'''
-def convertToParallelSolution (ind, data_type, data, numOfProcesses):
-    totalnumberOfSamples = len( data )
 
-    numOfBins = round ( totalnumberOfSamples / numOfProcesses ) + 1
-    start =  int (ind * numOfBins )
-    end = int (start + numOfBins )
-
-    result = 0
-    
-    if end >= totalnumberOfSamples:
-        end = totalnumberOfSamples
-
-    if end <= start:
-        return result 
-
-    if end > start:
-        result = download (data_type, data[start : end].reset_index( ) )
-
-    print("Batch {} of {} is done so far!!!!! {}.json (in progress)".format (ind, numOfProcesses, data_type))
-    #return result
-    return 1
-
-
-def parallel_solution (data_type, data, numOfProcesses=20 ):
-
-    pool = Pool(processes=numOfProcesses)              # start 20 worker processes
-
-    # launching multiple evaluations asynchronously *may* use more processes
-    multiple_results = [pool.apply_async(convertToParallelSolution, args=(ind, data_type, data, numOfProcesses, ))for ind in range(numOfProcesses)]
-
-    resultContainer =  [res.get() for res in multiple_results]
-    
- '''   
 
 # *********************************************************************
 from sklearn.datasets import load_files
@@ -208,7 +176,7 @@ from keras.layers import Input, BatchNormalization
 from keras.layers import Dense, LSTM, GlobalAveragePooling1D, GlobalAveragePooling2D
 from keras.layers import Activation, Flatten, Dropout, BatchNormalization
 from keras.layers import Conv2D, MaxPooling2D, GlobalMaxPooling2D
-
+import ast
 from PIL import ImageFile                            
 ImageFile.LOAD_TRUNCATED_IMAGES = True            
 
@@ -219,88 +187,111 @@ train_batch = os.listdir(train_path)
 final_df.index
 final_df['imageId'][1]
 
+
+# Load the filtered dataframe
+df = pd.read_csv('reduced_train.csv')
+
+mlb = MultiLabelBinarizer()
+train_label = mlb.fit_transform(df['labelId'])
+
+mlb.classes_
+
+df['labelId']
+ast.literal_eval(df.labelId[0])
+
 train_data = []
 
-from tqdm import tqdm
+for i in tqdm(range(len(df))):    
+    try:
+        img_path = train_path + str(df['imageId'][i]) +'.jpeg'
+        img = image.load_img(img_path, target_size= (224, 224))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)        
+        train_data.append(x)
+        
+    except:
+        print('no file', final_df['imageId'][i])
 
-for i in tqdm(range(len(final_df))):
+train_labels = []
+
+for i in tqdm(range(len(df))):
+    img_path = train_path + str(df['imageId'][i]) +'.jpeg'
+    if os.path.isfile(img_path):
+        x = df['labelId'][i]
+        x = ast.literal_eval(x)
+        #x = np.expand_dims(x, axis = 0)
+        train_labels.append(x)
+        
+
+mlb = MultiLabelBinarizer()
+train_label = mlb.fit_transform(train_labels)
+
+# Create a list of np array for encoded labels
+train_label_encoded = []
+for i in range(len(train_label)):
+    x = np.expand_dims(i, axis = 0)
+    train_label_encoded.append(x)
+
+train_label_encoded = np.vstack(train_label_encoded)
+
+from sklearn.preprocessing import MultiLabelBinarizer
+one_hot = MultiLabelBinarizer()
+one_hot.fit_transform(train_labels)
+
+
+
+train_label = np.vstack(train_labels)
+
+        
+validation_path = 'data/validation_images/'
+
+for i in tqdm(range(len(validation))):
     
-    #try:
-        img_path = train_path + str(final_df['imageId'][i]) +'.jpeg'
-        img = image.load_img(img_path, target_size= (331, 331))
+    try:
+        img_path = validation_path + str(validation['imageId'][i]) +'.jpeg'
+        img = image.load_img(img_path, target_size= (224, 224))
         x = image.img_to_array(img)
         x = np.expand_dims(x, axis=0)
-        np.save(os.path.join('processed_training_data', str(final_df['imageId'][i])), x)
+        np.save(os.path.join('mobilenet_train_data', ('v' + str(validation['imageId'][i]))), x)
         #train_data.append(x)
         
-    #except:
-        #print('no file', final_df['imageId'][i])
+    except:
+        print('no file', validation['imageId'][i])
 
-del train, df, df2
 
-train_input = np.vstack(train_data)
+testing_path = 'data/testing_images/'
+test_data = []
+null_list = []
+for i in tqdm(range(20000,30000)):
+    
+    try:
+        img_path = testing_path + str(test['imageId'][i]) +'.jpeg'
+        img = image.load_img(img_path, target_size= (224, 224))
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        #np.save(os.path.join('mobilenet_train_data', ('v' + str(validation['imageId'][i]))), x)
+        test_data.append(x)
+        
+    except:
+        null_list.append(test['imageId'][i])
+        print('no file', test['imageId'][i])
+        
+        
+del testing_stack2
+testing_stack3 = np.vstack(test_data)
+np.save('testing_stack3', testing_stack3)
+
+
+np.save('train_input_stacked', train_input)
 
 np.save(img_array, train_input)
         
 final_df['img_processed'] = train_data
 
 processed_df = final_df[final_df['img_processed'] != 'Missing_File']
-train_data = processed_df['img_processed'].tolist()
 
-def multi_model():    
-    model_input = Input(shape=(331, 331, 3))
-    x = BatchNormalization()(model_input)
-    
-    # Define a model architecture
-    x = Conv2D(32, (5, 5), activation='relu', padding='same')(model_input)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    x = Dropout(0.25)(x)
-    
-    x = Conv2D(128, (5, 5), activation='relu', padding='same')(x)       
-    x = MaxPooling2D(pool_size=(2, 2))(x)    
-    x = Dropout(0.25)(x)
-              
-    x = GlobalMaxPooling2D()(x)
-    
-    x = Dense(512, activation='relu')(x)    
-    x = Dropout(0.25)(x)
-    
-    y = Dense(228, activation='softmax')(x)
-   
-    
-    model = keras.applications.nasnet.NASNetLarge(input_shape=(331,331,3), include_top=True, weights='imagenet', 
-                                              input_tensor=None, pooling=None)
-    Model(inputs=model_input, outputs=y)
-    
-    # Compile the model
-    model.compile(loss='categorical_crossentropy', optimizer='nadam', metrics=['accuracy'])
-    return model
 
-train_input = np.vstack(train_data)
 
-def batching(df, batch_number, index):
-	train_data = []
-	labels []
-	while True:
-		for i in range(index, index+batch_number) 
-			# loading images and stacking them into arrays
-			img_path = train_path + str(final_df['imageId'][i]) +'.jpeg'
-	        img = image.load_img(img_path, target_size= (331, 331))
-	        x = image.img_to_array(img)
-	        x = np.expand_dims(x, axis=0)
-	        train_data.append(x)
-	        # loading labels
-	        label = df['labelId'][i]
-	        labels.append(np.expand_dims(label, axis=0))
-        
-        x_train = np.vstack(train_data)
-        y_train = np.vstack(labels)
-
-    return x_train, y_train
-
-processed_df['imageId']
-
-multi_model().fit(x=np.expand_dims(processed_df['img_processed'].as_matrix()), y=processed_df['labelId'].as_matrix())
 
 if __name__ == "__main__":
 
